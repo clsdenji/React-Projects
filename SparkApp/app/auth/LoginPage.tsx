@@ -8,7 +8,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
-  ActivityIndicator,
   Alert,
 } from "react-native";
 import * as Location from "expo-location";
@@ -134,7 +133,7 @@ const AuthScreen = () => {
     const sanitizedName = name.trim();
 
     if (isLogin) {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: sanitizedEmail,
         password,
       });
@@ -142,7 +141,7 @@ const AuthScreen = () => {
       if (error) {
         alert("Login failed: " + error.message);
       } else {
-        router.replace("../map"); // Redirect to map after login
+        router.replace("../map");
       }
     } else {
       const { data, error } = await supabase.auth.signUp({
@@ -166,7 +165,6 @@ const AuthScreen = () => {
         if (insertError) {
           alert("Error saving user details: " + insertError.message);
         } else {
-          // Show success alert and switch to login mode
           Alert.alert(
             "Account Created",
             "Your account has been successfully created. Please log in.",
@@ -174,7 +172,6 @@ const AuthScreen = () => {
               {
                 text: "OK",
                 onPress: () => {
-                  // Switch to login mode and reset form
                   setIsLogin(true);
                   setName("");
                   setEmail("");
@@ -194,12 +191,9 @@ const AuthScreen = () => {
 
   if (!fontsLoaded || locationLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FFD700" />
-        <Text style={styles.loadingText}>
-          {locationLoading ? "Requesting location permission..." : "Loading fonts..."}
-        </Text>
-      </View>
+      <CarLoadingScreen
+        message={locationLoading ? "Requesting location permission..." : "Loading fonts..."}
+      />
     );
   }
 
@@ -284,33 +278,68 @@ const AuthScreen = () => {
             </>
           )}
 
-          <TouchableOpacity onPress={handleSubmit} activeOpacity={0.8}>
+          {/* LOGIN / SIGNUP BUTTON */}
+          <TouchableOpacity onPress={handleSubmit} activeOpacity={0.9} style={{ width: "100%" }}>
             <LinearGradient
               colors={["#FFD700", "#32CD32"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.button}
+              style={styles.mainButton}
             >
-              <Text style={styles.buttonText}>{isLogin ? "Login" : "Sign Up"}</Text>
+              <Text style={styles.mainButtonText}>{isLogin ? "Log in" : "Sign Up"}</Text>
             </LinearGradient>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={toggleMode}>
-            <Text style={styles.switchText}>
-              {isLogin ? "Don't have an account? Sign Up" : "Already have an account? Login"}
+          {/* CREATE ACCOUNT / LOGIN SWITCH */}
+          <TouchableOpacity onPress={toggleMode} style={styles.outlineButton}>
+            <Text style={styles.outlineButtonText}>
+              {isLogin ? "Create new account" : "Already have an account? Login"}
             </Text>
           </TouchableOpacity>
+
+          {/* FORGOT PASSWORD LINK */}
+          {isLogin && (
+            <TouchableOpacity onPress={() => router.push("./ForgotPasswordScreen")}>
+              <Text style={styles.forgotText}>Forgot Password?</Text>
+            </TouchableOpacity>
+          )}
         </Animated.View>
       </KeyboardAvoidingView>
     </LinearGradient>
   );
 };
 
+/* 🚗 Car Loading Screen Component */
+const CarLoadingScreen = ({ message }: { message: string }) => {
+  const carAnim = useRef(new Animated.Value(-200)).current;
+
+  useEffect(() => {
+    const loopAnimation = () => {
+      carAnim.setValue(-200);
+      Animated.timing(carAnim, {
+        toValue: 400, // move across screen
+        duration: 2500,
+        useNativeDriver: true,
+      }).start(() => loopAnimation());
+    };
+    loopAnimation();
+  }, [carAnim]);
+
+  return (
+    <View style={styles.loadingContainer}>
+      <Animated.Text style={[styles.car, { transform: [{ translateX: carAnim }] }]}>
+        🚗💨
+      </Animated.Text>
+      <Text style={styles.loadingText}>{message}</Text>
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
   background: { flex: 1, justifyContent: "center" },
-  container: { flex: 1, justifyContent: "center", alignItems: "center" },
+  container: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 20 },
   card: {
-    width: "90%",
+    width: "100%",
     paddingVertical: 40,
     paddingHorizontal: 25,
     borderRadius: 25,
@@ -343,26 +372,40 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontFamily: "Roboto_400Regular",
   },
-  button: {
+  mainButton: {
     width: "100%",
-    paddingVertical: 15,
-    borderRadius: 20,
+    paddingVertical: 16,
+    borderRadius: 30,
     alignItems: "center",
-    marginBottom: 20,
-    shadowColor: "#FFD700",
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
+    justifyContent: "center",
+    marginVertical: 12,
   },
-  buttonText: {
+  mainButtonText: {
     color: "#1c1c1c",
+    fontWeight: "700",
+    fontSize: 20,
+    letterSpacing: 1.2,
+    fontFamily: "Poppins_700Bold",
+  },
+  outlineButton: {
+    width: "100%",
+    paddingVertical: 16,
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: "#32CD32",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  outlineButtonText: {
+    color: "#32CD32",
     fontWeight: "700",
     fontSize: 18,
     fontFamily: "Poppins_700Bold",
   },
-  switchText: {
-    color: "#32CD32",
-    marginTop: 5,
+  forgotText: {
+    color: "#FFD700",
+    marginTop: 10,
     fontSize: 15,
     textDecorationLine: "underline",
   },
@@ -388,6 +431,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
     backgroundColor: "#1c1c1c",
+  },
+  car: {
+    fontSize: 40,
+    marginBottom: 20,
   },
 });
 
