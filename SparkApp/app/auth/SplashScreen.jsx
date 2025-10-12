@@ -1,124 +1,234 @@
 import React, { useEffect, useRef } from "react";
-import { View, Text, StyleSheet, Animated } from "react-native";
+import { View, StyleSheet, Animated, Easing, Platform, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useFonts } from "expo-font";
-import { Poppins_700Bold } from "@expo-google-fonts/poppins";
+import { MuseoModerno_700Bold } from "@expo-google-fonts/museomoderno";
+
+const GREEN = "#7ED957";
+const GOLD = "#FFDE59";
+
+const BAR_CONTAINER_WIDTH = 220;
+const BAR_CHUNK_WIDTH = 100;
+const START_X = -BAR_CHUNK_WIDTH;
+const END_X = BAR_CONTAINER_WIDTH;
 
 export default function AuthSplashScreen() {
   const router = useRouter();
 
-  const fadeAnim = useRef(new Animated.Value(0)).current; // fade-in for text
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
-  const fadeOutAnim = useRef(new Animated.Value(1)).current; // fade-out layer
-  const progressAnim = useRef(new Animated.Value(-100)).current; // bar animation
+  // animations
+  const inOpacity = useRef(new Animated.Value(0)).current;
+  const inScale = useRef(new Animated.Value(0.96)).current;
+  const contentOpacity = useRef(new Animated.Value(1)).current;
+  const veilOpacity = useRef(new Animated.Value(0)).current;
+  const progressX = useRef(new Animated.Value(START_X)).current;
+  const sparkPulse = useRef(new Animated.Value(1)).current; // pulse for ⚡
 
-  const [fontsLoaded] = useFonts({ Poppins_700Bold });
+  const [fontsLoaded] = useFonts({ MuseoModerno_700Bold });
 
   useEffect(() => {
-    if (fontsLoaded) {
-      // Animate splash text in
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 1000,
+    if (!fontsLoaded) return;
+
+    // entrance animation
+    Animated.parallel([
+      Animated.timing(inOpacity, {
+        toValue: 1,
+        duration: 500,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.spring(inScale, {
+        toValue: 1,
+        friction: 7,
+        tension: 60,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // looping bars
+    const loopAnim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(progressX, {
+          toValue: END_X,
+          duration: 1600,
+          easing: Easing.linear,
           useNativeDriver: true,
         }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          friction: 5,
-          tension: 50,
+        Animated.timing(progressX, {
+          toValue: START_X,
+          duration: 0,
           useNativeDriver: true,
         }),
-      ]).start();
+      ])
+    );
+    loopAnim.start();
 
-      // Start progress bar loop
-      Animated.loop(
-        Animated.timing(progressAnim, {
-          toValue: 100,
-          duration: 1500,
+    // pulsing ⚡
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(sparkPulse, {
+          toValue: 0.6,
+          duration: 700,
           useNativeDriver: true,
-        })
-      ).start();
+        }),
+        Animated.timing(sparkPulse, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
 
-      // After delay, fade splash out smoothly
-      const timer = setTimeout(() => {
-        Animated.timing(fadeOutAnim, {
-          toValue: 0,
-          duration: 800, // smooth fade
-          useNativeDriver: true,
-        }).start(() => {
-          router.replace("auth/LoginPage");
+    // fade-out transition
+    const t = setTimeout(() => {
+      progressX.stopAnimation(() => {
+        Animated.parallel([
+          Animated.timing(contentOpacity, {
+            toValue: 0,
+            duration: 400,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(veilOpacity, {
+            toValue: 1,
+            duration: 400,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ]).start(({ finished }) => {
+          if (finished) router.replace("auth/LoginPage");
         });
-      }, 2500);
+      });
+    }, 2400);
 
-      return () => clearTimeout(timer);
-    }
+    return () => {
+      clearTimeout(t);
+      progressX.stopAnimation();
+    };
   }, [fontsLoaded]);
 
   if (!fontsLoaded) return null;
 
   return (
-    <LinearGradient
-      colors={["#1c1c1c", "#2e2e2e", "#3a3a3a"]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.container}
-    >
-      <Animated.View style={{ opacity: fadeOutAnim, alignItems: "center" }}>
-        {/* App Title */}
-        <Animated.Text
+    <View style={styles.root}>
+      <LinearGradient
+        colors={["#000000", "#050505", "#000000"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.container}
+      >
+        <Animated.View
           style={[
-            styles.title,
-            {
-              opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }],
-            },
+            styles.center,
+            { opacity: inOpacity, transform: [{ scale: inScale }] },
           ]}
         >
-          SPARK
-        </Animated.Text>
-
-        {/* Loading bar */}
-        <View style={styles.barContainer}>
           <Animated.View
-            style={[
-              styles.bar,
-              {
-                transform: [{ translateX: progressAnim }],
-              },
-            ]}
-          />
-        </View>
-      </Animated.View>
-    </LinearGradient>
+            style={{ opacity: contentOpacity, alignItems: "center" }}
+          >
+            {/* 🔼 Top Loading Bar */}
+            <View style={[styles.track, { marginBottom: 13 }]}>
+              <View style={styles.barContainer}>
+                <Animated.View style={{ transform: [{ translateX: progressX }] }}>
+                  <LinearGradient
+                    colors={[GOLD, GREEN]}
+                    start={{ x: 0, y: 0.5 }}
+                    end={{ x: 1, y: 0.5 }}
+                    style={[styles.bar, { width: BAR_CHUNK_WIDTH }]}
+                  />
+                </Animated.View>
+              </View>
+            </View>
+
+            <View style={styles.titleWrap}>
+              <Animated.Text
+                style={[
+                  styles.sparkEmoji,
+                  { transform: [{ scale: sparkPulse }] },
+                ]}
+              >
+                ⚡
+              </Animated.Text>
+              <Animated.Text style={styles.titleBase}>SPARK</Animated.Text>
+            </View>
+
+            {/* 🔽 Bottom Loading Bar */}
+            <View style={[styles.track, { marginTop: 20 }]}>
+              <View style={styles.barContainer}>
+                <Animated.View style={{ transform: [{ translateX: progressX }] }}>
+                  <LinearGradient
+                    colors={[GOLD, GREEN]}
+                    start={{ x: 0, y: 0.5 }}
+                    end={{ x: 1, y: 0.5 }}
+                    style={[styles.bar, { width: BAR_CHUNK_WIDTH }]}
+                  />
+                </Animated.View>
+              </View>
+            </View>
+          </Animated.View>
+        </Animated.View>
+
+        {/* black fade overlay */}
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.veil, { opacity: veilOpacity }]}
+        />
+      </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  root: { flex: 1, backgroundColor: "#000" },
+  container: { flex: 1 },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+
+  // --- TITLE + ⚡ ---
+  titleWrap: {
     justifyContent: "center",
     alignItems: "center",
+    marginVertical: 5,
   },
-  title: {
-    fontSize: 48,
-    fontFamily: "Poppins_700Bold",
-    color: "#FFD700", // gold
-    letterSpacing: 2,
-    marginBottom: 30,
+  sparkEmoji: {
+    fontSize: 32,
+    color: GOLD,
+    marginBottom: -8,
+    textShadowColor: "rgba(255, 222, 89, 0.4)",
+    textShadowRadius: 10,
+  },
+  titleBase: {
+    fontSize: 54,
+    fontFamily: "MuseoModerno_700Bold",
+    color: GREEN,
+    letterSpacing: 1.2,
+    top: 2,
+    opacity: 0.95,
+    ...Platform.select({ android: { elevation: 0 } }),
+  },
+
+  // --- TRACK + BAR ---
+  track: {
+    width: BAR_CONTAINER_WIDTH,
+    overflow: "hidden",
+    alignItems: "flex-start",
   },
   barContainer: {
-    width: 200,
+    width: "100%",
     height: 6,
-    backgroundColor: "#444",
+    backgroundColor: "#1a1a1a",
     borderRadius: 3,
     overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255, 222, 89, 0.18)",
   },
   bar: {
-    width: 80,
     height: "100%",
-    backgroundColor: "#FFD700", // gold
     borderRadius: 3,
+  },
+
+  // --- VEIL ---
+  veil: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#000",
   },
 });
