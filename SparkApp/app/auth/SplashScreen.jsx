@@ -8,32 +8,35 @@ import { MuseoModerno_700Bold } from "@expo-google-fonts/museomoderno";
 const GREEN = "#7ED957";
 const GOLD = "#FFDE59";
 
-const BAR_CONTAINER_WIDTH = 220;
-const BAR_CHUNK_WIDTH = 100;
-const START_X = -BAR_CHUNK_WIDTH;
-const END_X = BAR_CONTAINER_WIDTH;
+// make them travel farther if you want — this is horizontal distance
+const TRACK_WIDTH = 280;
+
+// extended duration for slower, smoother clash
+const DURATION = 2600;
 
 export default function AuthSplashScreen() {
   const router = useRouter();
 
-  // animations
+  // transitions
   const inOpacity = useRef(new Animated.Value(0)).current;
   const inScale = useRef(new Animated.Value(0.96)).current;
   const contentOpacity = useRef(new Animated.Value(1)).current;
   const veilOpacity = useRef(new Animated.Value(0)).current;
-  const progressX = useRef(new Animated.Value(START_X)).current;
-  const sparkPulse = useRef(new Animated.Value(1)).current; // pulse for ⚡
+
+  // motion for both titles
+  const greenX = useRef(new Animated.Value(-TRACK_WIDTH)).current; // left → right
+  const yellowX = useRef(new Animated.Value(+TRACK_WIDTH)).current; // right → left
 
   const [fontsLoaded] = useFonts({ MuseoModerno_700Bold });
 
   useEffect(() => {
     if (!fontsLoaded) return;
 
-    // entrance animation
+    // entrance fade/scale
     Animated.parallel([
       Animated.timing(inOpacity, {
         toValue: 1,
-        duration: 500,
+        duration: 600,
         easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
@@ -45,66 +48,43 @@ export default function AuthSplashScreen() {
       }),
     ]).start();
 
-    // looping bars
-    const loopAnim = Animated.loop(
-      Animated.sequence([
-        Animated.timing(progressX, {
-          toValue: END_X,
-          duration: 1600,
-          easing: Easing.linear,
-          useNativeDriver: true,
-        }),
-        Animated.timing(progressX, {
-          toValue: START_X,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    loopAnim.start();
+    // clash motion
+    Animated.parallel([
+      Animated.timing(greenX, {
+        toValue: +TRACK_WIDTH,
+        duration: DURATION,
+        easing: Easing.inOut(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(yellowX, {
+        toValue: -TRACK_WIDTH,
+        duration: DURATION,
+        easing: Easing.inOut(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
 
-    // pulsing ⚡
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(sparkPulse, {
-          toValue: 0.6,
-          duration: 700,
-          useNativeDriver: true,
-        }),
-        Animated.timing(sparkPulse, {
-          toValue: 1,
-          duration: 700,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    // fade-out transition
+    // fade out after the longer animation
     const t = setTimeout(() => {
-      progressX.stopAnimation(() => {
-        Animated.parallel([
-          Animated.timing(contentOpacity, {
-            toValue: 0,
-            duration: 400,
-            easing: Easing.out(Easing.quad),
-            useNativeDriver: true,
-          }),
-          Animated.timing(veilOpacity, {
-            toValue: 1,
-            duration: 400,
-            easing: Easing.inOut(Easing.quad),
-            useNativeDriver: true,
-          }),
-        ]).start(({ finished }) => {
-          if (finished) router.replace("auth/LoginPage");
-        });
+      Animated.parallel([
+        Animated.timing(contentOpacity, {
+          toValue: 0,
+          duration: 500,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(veilOpacity, {
+          toValue: 1,
+          duration: 500,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) router.replace("auth/LoginPage");
       });
-    }, 2400);
+    }, DURATION + 400); // small pause after the pass
 
-    return () => {
-      clearTimeout(t);
-      progressX.stopAnimation();
-    };
+    return () => clearTimeout(t);
   }, [fontsLoaded]);
 
   if (!fontsLoaded) return null;
@@ -123,56 +103,31 @@ export default function AuthSplashScreen() {
             { opacity: inOpacity, transform: [{ scale: inScale }] },
           ]}
         >
-          <Animated.View
-            style={{ opacity: contentOpacity, alignItems: "center" }}
-          >
-            {/* 🔼 Top Loading Bar */}
-            <View style={[styles.track, { marginBottom: 13 }]}>
-              <View style={styles.barContainer}>
-                <Animated.View style={{ transform: [{ translateX: progressX }] }}>
-                  <LinearGradient
-                    colors={[GOLD, GREEN]}
-                    start={{ x: 0, y: 0.5 }}
-                    end={{ x: 1, y: 0.5 }}
-                    style={[styles.bar, { width: BAR_CHUNK_WIDTH }]}
-                  />
-                </Animated.View>
-              </View>
-            </View>
-
-            <View style={styles.titleWrap}>
+          <Animated.View style={{ opacity: contentOpacity, alignItems: "center" }}>
+            {/* Clash container */}
+            <View style={[styles.track, { width: TRACK_WIDTH }]}>
+              {/* Green Spark */}
               <Animated.Text
-                style={[
-                  styles.sparkEmoji,
-                  { transform: [{ scale: sparkPulse }] },
-                ]}
+                style={[styles.titleGreen, { transform: [{ translateX: greenX }] }]}
               >
-                ⚡
+                Spark
               </Animated.Text>
-              <Animated.Text style={styles.titleBase}>SPARK</Animated.Text>
-            </View>
 
-            {/* 🔽 Bottom Loading Bar */}
-            <View style={[styles.track, { marginTop: 20 }]}>
-              <View style={styles.barContainer}>
-                <Animated.View style={{ transform: [{ translateX: progressX }] }}>
-                  <LinearGradient
-                    colors={[GOLD, GREEN]}
-                    start={{ x: 0, y: 0.5 }}
-                    end={{ x: 1, y: 0.5 }}
-                    style={[styles.bar, { width: BAR_CHUNK_WIDTH }]}
-                  />
-                </Animated.View>
-              </View>
+              {/* Yellow Spark */}
+              <Animated.Text
+                style={[styles.titleYellow, { transform: [{ translateX: yellowX }] }]}
+              >
+                Spark
+              </Animated.Text>
+
+              {/* Static ⚡ bolt */}
+              <Text style={styles.bolt}>⚡</Text>
             </View>
           </Animated.View>
         </Animated.View>
 
-        {/* black fade overlay */}
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.veil, { opacity: veilOpacity }]}
-        />
+        {/* Fade-out overlay */}
+        <Animated.View pointerEvents="none" style={[styles.veil, { opacity: veilOpacity }]} />
       </LinearGradient>
     </View>
   );
@@ -183,20 +138,16 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
 
-  // --- TITLE + ⚡ ---
-  titleWrap: {
+  track: {
+    height: 80,
+    overflow: "hidden",
     justifyContent: "center",
     alignItems: "center",
-    marginVertical: 5,
+    position: "relative",
   },
-  sparkEmoji: {
-    fontSize: 32,
-    color: GOLD,
-    marginBottom: -8,
-    textShadowColor: "rgba(255, 222, 89, 0.4)",
-    textShadowRadius: 10,
-  },
-  titleBase: {
+
+  titleGreen: {
+    position: "absolute",
     fontSize: 54,
     fontFamily: "MuseoModerno_700Bold",
     color: GREEN,
@@ -206,27 +157,25 @@ const styles = StyleSheet.create({
     ...Platform.select({ android: { elevation: 0 } }),
   },
 
-  // --- TRACK + BAR ---
-  track: {
-    width: BAR_CONTAINER_WIDTH,
-    overflow: "hidden",
-    alignItems: "flex-start",
-  },
-  barContainer: {
-    width: "100%",
-    height: 6,
-    backgroundColor: "#1a1a1a",
-    borderRadius: 3,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255, 222, 89, 0.18)",
-  },
-  bar: {
-    height: "100%",
-    borderRadius: 3,
+  titleYellow: {
+    position: "absolute",
+    fontSize: 54,
+    fontFamily: "MuseoModerno_700Bold",
+    color: GOLD,
+    letterSpacing: 1.2,
+    textShadowColor: "rgba(255, 222, 89, 0.45)",
+    textShadowRadius: 20,
+    textShadowOffset: { width: 0, height: 0 },
   },
 
-  // --- VEIL ---
+  bolt: {
+    position: "absolute",
+    fontSize: 28,
+    color: GOLD,
+    textShadowColor: "rgba(255, 222, 89, 0.35)",
+    textShadowRadius: 10,
+  },
+
   veil: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "#000",

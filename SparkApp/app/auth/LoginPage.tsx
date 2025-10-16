@@ -18,10 +18,13 @@ import { Roboto_400Regular } from "@expo-google-fonts/roboto";
 import { supabase } from "../services/supabaseClient";
 import { useRouter } from "expo-router";
 
+const GOLD = "#FFDE59";
+const GREEN = "#7ED957";
+
 const AuthScreen = () => {
   const router = useRouter();
 
-  const [location, setLocation] = useState<Location.LocationObject | null>(null);
+  const [location, setLocation] = useState<any | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
   const [locationError, setLocationError] = useState<string | null>(null);
 
@@ -35,11 +38,31 @@ const AuthScreen = () => {
   const [rePasswordError, setRePasswordError] = useState("");
   const [emailError, setEmailError] = useState("");
 
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
+  const heartbeat = useRef(new Animated.Value(1)).current;
   const [fontsLoaded] = useFonts({ Poppins_700Bold, Roboto_400Regular });
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(heartbeat, {
+          toValue: 1.25,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(heartbeat, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [heartbeat]);
 
   useEffect(() => {
     (async () => {
@@ -67,21 +90,9 @@ const AuthScreen = () => {
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 700, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
     ]).start();
   }, []);
 
@@ -168,21 +179,7 @@ const AuthScreen = () => {
           Alert.alert(
             "Account Created",
             "Your account has been successfully created. Please log in.",
-            [
-              {
-                text: "OK",
-                onPress: () => {
-                  setIsLogin(true);
-                  setName("");
-                  setEmail("");
-                  setPassword("");
-                  setRePassword("");
-                  setPasswordError("");
-                  setRePasswordError("");
-                  setEmailError("");
-                },
-              },
-            ]
+            [{ text: "OK", onPress: () => setIsLogin(true) }]
           );
         }
       }
@@ -191,9 +188,12 @@ const AuthScreen = () => {
 
   if (!fontsLoaded || locationLoading) {
     return (
-      <CarLoadingScreen
-        message={locationLoading ? "Requesting location permission..." : "Loading fonts..."}
-      />
+      <View style={styles.loadingContainer}>
+        <Animated.Text style={[styles.loadingBolt, { transform: [{ scale: heartbeat }] }]}>
+          ⚡
+        </Animated.Text>
+        <Text style={styles.loadingText}>Requesting location permission...</Text>
+      </View>
     );
   }
 
@@ -201,13 +201,8 @@ const AuthScreen = () => {
     return (
       <View style={styles.errorContainer}>
         <Text style={{ color: "red", marginBottom: 20 }}>{locationError}</Text>
-        <TouchableOpacity
-          onPress={() => {
-            setLocationError(null);
-            setLocationLoading(true);
-          }}
-        >
-          <Text style={{ color: "#FFD700", textDecorationLine: "underline" }}>Try Again</Text>
+        <TouchableOpacity onPress={() => setLocationError(null)}>
+          <Text style={{ color: GOLD, textDecorationLine: "underline" }}>Try Again</Text>
         </TouchableOpacity>
       </View>
     );
@@ -215,7 +210,7 @@ const AuthScreen = () => {
 
   return (
     <LinearGradient
-      colors={["#1c1c1c", "#2e2e2e", "#3a3a3a"]}
+      colors={["#000000", "#0d0d0d", "#1a1a1a"]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.background}
@@ -230,11 +225,16 @@ const AuthScreen = () => {
             { opacity: fadeAnim, transform: [{ translateY: slideAnim }, { scale: scaleAnim }] },
           ]}
         >
-          <Text style={styles.title}>{isLogin ? "Welcome Back" : "Create Account"}</Text>
+          <View style={{ alignItems: "center", marginBottom: 25 }}>
+            <Text style={styles.welcomeText}>Welcome to</Text>
+            <Text style={styles.sparkTitle}>Spark</Text>
+          </View>
 
           {!isLogin && (
             <TextInput
-              style={styles.input}
+              style={[styles.input, focusedInput === "name" && styles.inputFocused]}
+              onFocus={() => setFocusedInput("name")}
+              onBlur={() => setFocusedInput(null)}
               placeholder="Full Name"
               placeholderTextColor="#888"
               autoCapitalize="words"
@@ -244,7 +244,9 @@ const AuthScreen = () => {
           )}
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, focusedInput === "email" && styles.inputFocused]}
+            onFocus={() => setFocusedInput("email")}
+            onBlur={() => setFocusedInput(null)}
             placeholder="Email"
             placeholderTextColor="#888"
             keyboardType="email-address"
@@ -255,7 +257,9 @@ const AuthScreen = () => {
           {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, focusedInput === "password" && styles.inputFocused]}
+            onFocus={() => setFocusedInput("password")}
+            onBlur={() => setFocusedInput(null)}
             placeholder="Password"
             placeholderTextColor="#888"
             secureTextEntry
@@ -267,7 +271,9 @@ const AuthScreen = () => {
           {!isLogin && (
             <>
               <TextInput
-                style={styles.input}
+                style={[styles.input, focusedInput === "repassword" && styles.inputFocused]}
+                onFocus={() => setFocusedInput("repassword")}
+                onBlur={() => setFocusedInput(null)}
                 placeholder="Re-enter Password"
                 placeholderTextColor="#888"
                 secureTextEntry
@@ -278,26 +284,18 @@ const AuthScreen = () => {
             </>
           )}
 
-          {/* LOGIN / SIGNUP BUTTON */}
           <TouchableOpacity onPress={handleSubmit} activeOpacity={0.9} style={{ width: "100%" }}>
-            <LinearGradient
-              colors={["#FFD700", "#32CD32"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.mainButton}
-            >
+            <LinearGradient colors={[GOLD, GREEN]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.mainButton}>
               <Text style={styles.mainButtonText}>{isLogin ? "Log in" : "Sign Up"}</Text>
             </LinearGradient>
           </TouchableOpacity>
 
-          {/* CREATE ACCOUNT / LOGIN SWITCH */}
           <TouchableOpacity onPress={toggleMode} style={styles.outlineButton}>
             <Text style={styles.outlineButtonText}>
               {isLogin ? "Create new account" : "Already have an account? Login"}
             </Text>
           </TouchableOpacity>
 
-          {/* FORGOT PASSWORD LINK */}
           {isLogin && (
             <TouchableOpacity onPress={() => router.push("./ForgotPasswordScreen")}>
               <Text style={styles.forgotText}>Forgot Password?</Text>
@@ -309,69 +307,65 @@ const AuthScreen = () => {
   );
 };
 
-/* 🚗 Car Loading Screen Component */
-const CarLoadingScreen = ({ message }: { message: string }) => {
-  const carAnim = useRef(new Animated.Value(-200)).current;
-
-  useEffect(() => {
-    const loopAnimation = () => {
-      carAnim.setValue(-200);
-      Animated.timing(carAnim, {
-        toValue: 400, // move across screen
-        duration: 2500,
-        useNativeDriver: true,
-      }).start(() => loopAnimation());
-    };
-    loopAnimation();
-  }, [carAnim]);
-
-  return (
-    <View style={styles.loadingContainer}>
-      <Animated.Text style={[styles.car, { transform: [{ translateX: carAnim }] }]}>
-        🚗💨
-      </Animated.Text>
-      <Text style={styles.loadingText}>{message}</Text>
-    </View>
-  );
-};
-
 const styles = StyleSheet.create({
-  background: { flex: 1, justifyContent: "center" },
+  background: { flex: 1, justifyContent: "center", backgroundColor: "#000" },
   container: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 20 },
+
   card: {
     width: "100%",
     paddingVertical: 40,
     paddingHorizontal: 25,
-    borderRadius: 25,
-    backgroundColor: "rgba(30,30,30,0.95)",
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 10 },
+    borderRadius: 35, // more rounded look
+    backgroundColor: "rgba(20,20,20,0.85)",
+    borderWidth: 1.5,
+    borderColor: "rgba(126, 217, 87, 0.3)",
+    shadowColor: GOLD,
+    shadowOpacity: 0.25,
+    shadowRadius: 25,
+    shadowOffset: { width: 0, height: 0 },
     elevation: 10,
     alignItems: "center",
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 30,
-    color: "#FFD700",
+
+  welcomeText: {
+    fontSize: 22,
+    color: GOLD,
     fontFamily: "Poppins_700Bold",
-    textAlign: "center",
+    textShadowColor: "rgba(255, 222, 89, 0.45)",
+    textShadowRadius: 10,
+    letterSpacing: 1,
+    marginBottom: -4,
   },
+  sparkTitle: {
+    fontSize: 40,
+    color: GREEN,
+    fontFamily: "Poppins_700Bold",
+    textShadowColor: "rgba(126, 217, 87, 0.5)",
+    textShadowRadius: 15,
+    letterSpacing: 2,
+  },
+
   input: {
     width: "100%",
     height: 55,
     borderRadius: 12,
     paddingHorizontal: 20,
     marginBottom: 12,
-    backgroundColor: "#2e2e2e",
-    borderColor: "#444",
+    backgroundColor: "#111",
+    borderColor: "#333",
     borderWidth: 1,
     fontSize: 16,
     color: "#fff",
     fontFamily: "Roboto_400Regular",
   },
+  inputFocused: {
+    borderColor: GREEN,
+    shadowColor: GREEN,
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+  },
+
   mainButton: {
     width: "100%",
     paddingVertical: 16,
@@ -379,9 +373,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginVertical: 12,
+    shadowColor: GOLD,
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
   },
   mainButtonText: {
-    color: "#1c1c1c",
+    color: "#0b0b0b",
     fontWeight: "700",
     fontSize: 20,
     letterSpacing: 1.2,
@@ -392,49 +389,55 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 30,
     borderWidth: 2,
-    borderColor: "#32CD32",
+    borderColor: GREEN,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
   },
   outlineButtonText: {
-    color: "#32CD32",
+    color: GREEN,
     fontWeight: "700",
     fontSize: 18,
     fontFamily: "Poppins_700Bold",
   },
+
   forgotText: {
-    color: "#FFD700",
+    color: GOLD,
     marginTop: 10,
     fontSize: 15,
     textDecorationLine: "underline",
   },
+
   errorText: {
     color: "red",
     fontSize: 13,
     marginBottom: 10,
     alignSelf: "flex-start",
   },
+
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#1c1c1c",
+    backgroundColor: "#000",
   },
   loadingText: {
     marginTop: 15,
-    color: "#FFD700",
+    color: GOLD,
+    fontSize: 16,
   },
+  loadingBolt: {
+    fontSize: 60,
+    color: GOLD,
+    textShadowColor: "rgba(255, 222, 89, 0.6)",
+    textShadowRadius: 25,
+  },
+
   errorContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
-    backgroundColor: "#1c1c1c",
-  },
-  car: {
-    fontSize: 40,
-    marginBottom: 20,
+    backgroundColor: "#000",
   },
 });
 
