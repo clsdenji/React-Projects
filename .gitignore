@@ -1,1 +1,4 @@
 node_modules
+.expo/
+expo-env.d.ts
+android/app/debug.keystore
